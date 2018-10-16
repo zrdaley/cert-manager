@@ -3,23 +3,19 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
-        "addons.go",
-        "config.go",
-        "framework.go",
-        "ginkgo.go",
-        "helm.go",
-        "nginx.go",
-        "pebble.go",
-        "suite.go",
-        "tiller.go",
-        "venafi.go",
+        "certificate.go",
+        "doc.go",
     ],
-    importpath = "github.com/jetstack/cert-manager/test/e2e/framework/config",
+    importpath = "github.com/jetstack/cert-manager/test/e2e/suite/issuers/venafi/tpp",
     tags = ["manual"],
     visibility = ["//visibility:public"],
     deps = [
-        "//vendor/k8s.io/apimachinery/pkg/util/errors:go_default_library",
-        "//vendor/k8s.io/client-go/tools/clientcmd:go_default_library",
+        "//pkg/apis/certmanager/v1alpha1:go_default_library",
+        "//test/e2e/framework:go_default_library",
+        "//test/e2e/suite/issuers/venafi/addon:go_default_library",
+        "//test/util:go_default_library",
+        "//vendor/github.com/onsi/ginkgo:go_default_library",
+        "//vendor/github.com/onsi/gomega:go_default_library",
     ],
 )
 

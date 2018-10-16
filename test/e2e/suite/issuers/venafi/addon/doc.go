@@ -14,12 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package suite
-
-import (
-	_ "github.com/jetstack/cert-manager/test/e2e/suite/issuers/acme"
-	_ "github.com/jetstack/cert-manager/test/e2e/suite/issuers/ca"
-	_ "github.com/jetstack/cert-manager/test/e2e/suite/issuers/selfsigned"
-	_ "github.com/jetstack/cert-manager/test/e2e/suite/issuers/vault"
-	_ "github.com/jetstack/cert-manager/test/e2e/suite/issuers/venafi"
-)
+// Package addon implements an addon for the Venafi platform.
+// It provides a means for e2e tests to consume credentials for Venafi TPP.
+package addon
