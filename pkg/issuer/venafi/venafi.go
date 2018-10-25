@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Venafi/vcert"
+	"github.com/Venafi/vcert/pkg/certificate"
 	"github.com/Venafi/vcert/pkg/endpoint"
 	cmapi "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	"github.com/jetstack/cert-manager/pkg/controller"
@@ -19,8 +20,7 @@ const (
 	defaultAPIKeyKey = "api-key"
 )
 
-// Veanfi is a implementation of govcert library to manager certificates from TPP or Venafi Cloud
-
+// Venafi is a implementation of govcert library to manager certificates from TPP or Venafi Cloud
 type Venafi struct {
 	issuer cmapi.GenericIssuer
 	*controller.Context
@@ -31,7 +31,17 @@ type Venafi struct {
 	resourceNamespace string
 	secretsLister     corelisters.SecretLister
 
-	client endpoint.Connector
+	client connector
+}
+
+// connector exposes a subset of the vcert Connector interface to make stubbing
+// out its functionality during tests easier.
+type connector interface {
+	Ping() (err error)
+	ReadZoneConfiguration(zone string) (config *endpoint.ZoneConfiguration, err error)
+	RequestCertificate(req *certificate.Request, zone string) (requestID string, err error)
+	RetrieveCertificate(req *certificate.Request) (certificates *certificate.PEMCollection, err error)
+	RenewCertificate(req *certificate.RenewalRequest) (requestID string, err error)
 }
 
 func NewVenafi(ctx *controller.Context, issuer cmapi.GenericIssuer) (issuer.Interface, error) {

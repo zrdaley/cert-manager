@@ -89,3 +89,9 @@ func SetCertificateLastFailureTime(p metav1.Time) CertificateModifier {
 		crt.Status.LastFailureTime = &p
 	}
 }
+
+func SetCertificateOrganization(orgs ...string) CertificateModifier {
+	return func(ch *v1alpha1.Certificate) {
+		ch.Spec.Organization = orgs
+	}
+}
