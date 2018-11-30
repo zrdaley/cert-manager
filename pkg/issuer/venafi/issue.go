@@ -49,7 +49,7 @@ const (
 // - Validate the request against the zone
 // - Submit the request
 // - Wait for the request to be fulfilled and the certificate to be available
-func (v *Venafi) Issue(ctx context.Context, crt *v1alpha1.Certificate) (issuer.IssueResponse, error) {
+func (v *Venafi) Issue(ctx context.Context, crt *v1alpha1.Certificate) (*issuer.IssueResponse, error) {
 	// Always generate a new private key, as some Venafi configurations mandate
 	// unique private keys per issuance.
 	signeeKey, err := pki.GeneratePrivateKeyForCertificate(crt)
@@ -59,21 +59,21 @@ func (v *Venafi) Issue(ctx context.Context, crt *v1alpha1.Certificate) (issuer.I
 		// don't trigger a retry. An error from this function implies some
 		// invalid input parameters, and retrying without updating the
 		// resource will not help.
-		return issuer.IssueResponse{}, nil
+		return nil, nil
 	}
 
 	// extract the public component of the key
 	signeePublicKey, err := pki.PublicKeyForPrivateKey(signeeKey)
 	if err != nil {
 		glog.Errorf("Error getting public key from private key: %v", err)
-		return issuer.IssueResponse{}, err
+		return nil, err
 	}
 
 	// We build a x509.Certificate as the vcert library has support for converting
 	// this into its own internal Certificate Request type.
 	tmpl, err := pki.GenerateTemplate(v.issuer, crt)
 	if err != nil {
-		return issuer.IssueResponse{}, err
+		return nil, err
 	}
 
 	// TODO: we need some way to detect fields are defaulted on the template,
@@ -95,7 +95,7 @@ func (v *Venafi) Issue(ctx context.Context, crt *v1alpha1.Certificate) (issuer.I
 	zoneCfg, err := v.client.ReadZoneConfiguration(zoneName)
 	if err != nil {
 		v.Recorder.Eventf(crt, corev1.EventTypeWarning, "ReadZone", "Failed to read Venafi zone configuration: %v", err)
-		return issuer.IssueResponse{}, err
+		return nil, err
 	}
 
 	//// Begin building Venafi certificate Request
@@ -110,14 +110,14 @@ func (v *Venafi) Issue(ctx context.Context, crt *v1alpha1.Certificate) (issuer.I
 		// TODO: set a certificate status condition instead of firing an event
 		// in case this step is particularly chatty
 		v.Recorder.Eventf(crt, corev1.EventTypeWarning, "Validate", "Failed to validate certificate against Venafi zone: %v", err)
-		return issuer.IssueResponse{}, err
+		return nil, err
 	}
 
 	// Generate the actual x509 CSR and set it on the vreq
 	err = certificate.GenerateRequest(vreq, signeeKey)
 	if err != nil {
 		v.Recorder.Eventf(crt, corev1.EventTypeWarning, "GenerateCSR", "Failed to generate a CSR for the certificate: %v", err)
-		return issuer.IssueResponse{}, err
+		return nil, err
 	}
 
 	// certificate.GenerateRequest above sets the CSR field as der encoded bytes
@@ -138,7 +138,7 @@ func (v *Venafi) Issue(ctx context.Context, crt *v1alpha1.Certificate) (issuer.I
 	requestID, err := v.client.RequestCertificate(vreq, zoneName)
 	if err != nil {
 		v.Recorder.Eventf(crt, corev1.EventTypeWarning, "Request", "Failed to request a certificate from Venafi: %v", err)
-		return issuer.IssueResponse{}, err
+		return nil, err
 	}
 
 	// Set the PickupID so vcert does not have to look it up by the fingerprint
@@ -154,27 +154,27 @@ func (v *Venafi) Issue(ctx context.Context, crt *v1alpha1.Certificate) (issuer.I
 	// Check some known error types
 	if err, ok := err.(endpoint.ErrCertificatePending); ok {
 		v.Recorder.Eventf(crt, corev1.EventTypeWarning, "Retrieve", "Failed to retrieve a certificate from Venafi, still pending: %v", err)
-		return issuer.IssueResponse{}, fmt.Errorf("Venafi certificate still pending: %v", err)
+		return nil, fmt.Errorf("Venafi certificate still pending: %v", err)
 	}
 	if err, ok := err.(endpoint.ErrRetrieveCertificateTimeout); ok {
 		v.Recorder.Eventf(crt, corev1.EventTypeWarning, "Retrieve", "Failed to retrieve a certificate from Venafi, timed out: %v", err)
-		return issuer.IssueResponse{}, fmt.Errorf("Timed out waiting for certificate: %v", err)
+		return nil, fmt.Errorf("Timed out waiting for certificate: %v", err)
 	}
 	if err != nil {
 		v.Recorder.Eventf(crt, corev1.EventTypeWarning, "Retrieve", "Failed to retrieve a certificate from Venafi: %v", err)
-		return issuer.IssueResponse{}, err
+		return nil, err
 	}
 
 	// Encode the private key ready to be saved
 	pk, err := pki.EncodePrivateKey(signeeKey)
 	if err != nil {
-		return issuer.IssueResponse{}, err
+		return nil, err
 	}
 
 	// Construct the certificate chain and return the new keypair
 	cs := append([]string{pemCollection.Certificate}, pemCollection.Chain...)
 	chain := strings.Join(cs, "\n")
-	return issuer.IssueResponse{
+	return &issuer.IssueResponse{
 		PrivateKey:  pk,
 		Certificate: []byte(chain),
 		// TODO: obtain CA certificate somehow

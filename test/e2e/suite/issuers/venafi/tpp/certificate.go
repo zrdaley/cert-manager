@@ -74,7 +74,7 @@ var _ = TPPDescribe("with a properly configured Issuer", func() {
 
 		By("Creating a Certificate")
 		_, err := certClient.Create(
-			util.NewCertManagerBasicCertificate(certificateName, certificateSecretName, issuer.Name, cmapi.IssuerKind),
+			util.NewCertManagerBasicCertificate(certificateName, certificateSecretName, issuer.Name, cmapi.IssuerKind, nil, nil),
 		)
 		Expect(err).NotTo(HaveOccurred())
 		By("Verifying the Certificate is valid")
