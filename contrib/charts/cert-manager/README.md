@@ -54,7 +54,7 @@ The following table lists the configurable parameters of the cert-manager chart 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
 | `image.repository` | Image repository | `quay.io/jetstack/cert-manager-controller` |
-| `image.tag` | Image tag | `canary` |
+| `image.tag` | Image tag | `venafi-0` |
 | `image.pullPolicy` | Image pull policy | `Always` |
 | `replicaCount`  | Number of cert-manager replicas  | `1` |
 | `createCustomResource` | Create CRD/TPR with this release | `true` |
@@ -87,7 +87,7 @@ The following table lists the configurable parameters of the cert-manager chart 
 | `webhook.extraArgs` | Optional flags for cert-manager webhook component | `[]` |
 | `webhook.resources` | CPU/memory resource requests/limits for the webhook pods | |
 | `webhook.image.repository` | Webhook image repository | `quay.io/jetstack/cert-manager-webhook` |
-| `webhook.image.tag` | Webhook image tag | `canary` |
+| `webhook.image.tag` | Webhook image tag | `venafi-0` |
 | `webhook.image.pullPolicy` | Webhook image pull policy | `Always` |
 | `webhook.caSyncImage.repository` | CA sync image repository | `quay.io/munnerz/apiextensions-ca-helper` |
 | `webhook.caSyncImage.tag` | CA sync image tag | `v0.1.0` |
