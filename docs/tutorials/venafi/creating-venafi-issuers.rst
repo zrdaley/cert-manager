@@ -1,73 +1,78 @@
-Venafi issuer for Jetstack cert-manager
+Setting up a Venafi Cloud or TPP Issuer
 =======================================
 
-Venafi issuer is a cert-manager
-(https://github.com/jetstack/cert-manager) extension which support
-certificate management from Venafi Cloud and Venafi Venafi Platform. Also
-it have fakeissuer interface for testing purpose.
+Venafi issuer is an extension which supports certificate management from Venafi
+Cloud and Venafi Venafi Platform.
 
 Creating Venafi Cloud issuer
----------------------------------------------
+----------------------------
 
 Register your account at https://api.venafi.cloud/login and get API key there.
 
-Create a secret for the issuer (in this example the issuer will be
-Venafi Cloud and we'll use the default namespace)
+Create a secret containing your authentication credentials for the issuer to
+use (in this example, the Issuer will utilise Venafi Cloud and will only issue
+certificates in the ``default`` namespace).
 
-::
+.. code-block:: shell
 
     kubectl create secret generic cloudsecret --from-literal=apikey='YOUR_CLOUD_API_KEY_HERE'
 
-Create the issuer
+Create the issuer, referencing the secret we just created:
 
 .. code-block:: yaml
 
     apiVersion: certmanager.k8s.io/v1alpha1
     kind: Issuer
     metadata:
-            name: cloud-venafi-issuer
+      name: cloud-venafi-issuer
     spec:
-            venafi:
-                    cloudsecret: cloudsecret
-                    zone: "DevOps"
+      venafi:
+        zone: "DevOps"
+        cloud:
+          apiKeySecretRef:
+            name: cloudsecret
+            key: apikey
 
 You can create multiple issuers pointing to different Venafi Cloud zones, or
-even have 1 issuer pointing to Venafi Platform and another pointing to Venafi Cloud.
+even have 1 issuer pointing to Venafi Platform and another pointing to Venafi
+Cloud.
 
-Here's an example certificate resource file using the new issuer:
+We can then create a certificate resource that utilises this newly configured
+issuer:
 
 .. code-block:: yaml
 
     apiVersion: certmanager.k8s.io/v1alpha1
     kind: Certificate
     metadata:
-            name: cert4-venafi-localhost
+      name: cert4-venafi-localhost
     spec:
-            secretName: cert4-venafi-localhost
-            issuerRef:
-                    name: cloud-venafi-issuer
-            commonName: cert4.venafi.localhost
+      commonName: cert4.venafi.localhost
+      secretName: cert4-venafi-localhost
+      issuerRef:
+        name: cloud-venafi-issuer
 
-
+To see the full list of options available on the Certificate resource, take a
+look at the ``API reference documentation``.
 
 Creating Venafi Platform issuer
---------------------------
+-------------------------------
 
-By default one Venafi Platform issuer is alredy created when you run "make install",
-it called tppvenafiissuer. You can create more issuers for different Venafi Platform
-server or policies.
+Similar to how we created credentials and an Issuer resource for TPP Cloud
+above, we can also create Issuers for Venafi TPP instances.
+
+Again, you can have multiple Issuer's for different Venafi zones, and even run
+Venafi Cloud Issuers alongside Venafi TPP Issuers.
 
 **Requirements for Venafi Platform policy**
 
+1. You **must** allow "User Provided CSRs" as part of your TPP policy, as this
+   is the only type supported by the underlying ``vcert`` library we use.
 
-1. Policy should have default template configured
-
-2. Currently vcert (which is used in Venafi issuers) supports only user
-   provided CSR. So it is must be set in the policy.
-
-3. MSCA configuration should have http URI set before the ldap URI in
+2. MSCA configuration should have http URI set before the ldap URI in
    X509 extensions, otherwise NGINX ingress controller couldn't get
    certificate chain from URL and OSCP will not work. Example:
+   TODO: verify this/make it clearer
 
 ::
 
@@ -83,55 +88,48 @@ server or policies.
         CA Issuers - URI:http://qavenafica.venqa.venafi.com/CertEnroll/qavenafica.venqa.venafi.com_QA%20Venafi%20CA.crt}}
         CA Issuers - URI:ldap:///CN=QA%20Venafi%20CA,CN=AIA,CN=Public%20Key%20Services,CN=Services,CN=Configuration,DC=venqa,DC=venafi,DC=com?cACertificate?base?objectClass=certificationAuthority}}
 
-4. Option in Venafi Platform CA configuration template "Automatically include CN as
-   DNS SAN" should be set to true.
+3. Option in Venafi Platform CA configuration template "Automatically include
+   CN as DNS SAN" should be set to true. (TODO this shouldn't be a requirement)
 
 **Create a secret with Venafi Platform credentials:**
 
-::
+Like before, we create a Secret resource containing our Venafi TPP credentials:
 
-    kubectl create secret generic tppsecret --from-literal=user=admin --from-literal=password=tpppassword --namespace cert-manager-example
+.. code-block:: shell
+
+    kubectl create secret generic tppsecret \
+        --from-literal=user=admin \
+        --from-literal=password=tpppassword
 
 Create Venafi Platform issuer
 
 .. code-block:: yaml
 
-    apiVersion: certmanager.k8s.io/v1alpha1
-    kind: Issuer
-    metadata:
-      name: tpp-venafi-issuer
-    spec:
-      venafi:
-        tppsecret: tppsecret
-        tppurl: https://tpp.venafi.example/vedsdk
-        zone: devops\cert-manager
-    status:
-      conditions:
-      - lastTransitionTime: 2018-08-03T12:26:58Z
-        message: Venafi issuer started
-        reason: Venafi issuer started
-        status: "True"
-        type: Ready
+   apiVersion: certmanager.k8s.io/v1alpha1
+   kind: Issuer
+   metadata:
+     name: tpp-venafi-issuer
+   spec:
+     zone: devops\cert-manager # must exist in the TPP console
+     venafi:
+       tpp:
+         url: https://tpp.venafi.example/vedsdk
+         credentialsRef:
+           name: tppsecret
 
+**Create a certificate**
 
-
-
-Create a certificate
-
-cert.yaml:
+Just the same as before, we can create a Certificate resource that utilises the
+TPP Issuer we just created:
 
 .. code-block:: yaml
 
-    apiVersion: certmanager.k8s.io/v1alpha1
-    kind: Certificate
-    metadata:
-            name: hellodemo-venafi-localhost
-            namespace: cert-manager-example
-    spec:
-            secretName: hellodemo-venafi-localhost
-            issuerRef:
-                    name: tppvenafiissuer
-            commonName: hellodemo.venafi.localhost
-
-
-
+   apiVersion: certmanager.k8s.io/v1alpha1
+   kind: Certificate
+   metadata:
+     name: hellodemo-venafi-localhost
+   spec:
+     commonName: hellodemo.venafi.localhost
+     secretName: hellodemo-venafi-localhost
+     issuerRef:
+       name: tppvenafiissuer
