@@ -28,6 +28,16 @@ source "${SCRIPT_ROOT}/lib/lib.sh"
 echo "+++ Creating cluster using kind"
 "${SCRIPT_ROOT}/lib/cluster_create.sh"
 
+echo "+++ Installing default Tiller deployment in kube-system"
+export KUBECONFIG="${HOME}/.kube/kind-config-${KIND_CLUSTER_NAME}"
+
+# Create a service account for Tiller
+kubectl create serviceaccount -n kube-system tiller
+# Bind the tiller service account to the cluster-admin role
+kubectl create clusterrolebinding tiller-binding --clusterrole=cluster-admin --serviceaccount kube-system:tiller
+# Deploy tiller
+bazel run //hack/bin:helm -- init --service-account tiller
+
 echo "+++ Building cert-manager images from source and exporting them to the development cluster"
 "${SCRIPT_ROOT}/lib/build_images.sh"
 
