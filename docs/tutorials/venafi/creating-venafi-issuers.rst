@@ -1,8 +1,31 @@
 Setting up a Venafi Cloud or TPP Issuer
 =======================================
 
-Venafi issuer is an extension which supports certificate management from Venafi
-Cloud and Venafi Venafi Platform.
+The Venafi issuer is an extension which supports certificate management from
+Venafi Cloud and Venafi Trust Protection Platform.
+
+Deploying cert-manager
+----------------------
+
+.. note::
+   Please also see the 'Getting Started' guide on the left for more info on how
+   to deploy cert-manager.
+
+.. note::
+   This guide assumes you already have a functioning Kubernetes cluster
+   of version 1.9 or greater.
+
+You can run the following to deploy cert-manager with the Venafi integration
+for the first time:
+
+.. code-block:: shell
+
+   kubectl apply -f https://raw.githubusercontent.com/jetstack/cert-manager/venafi/contrib/manifests/cert-manager/with-rbac.yaml
+
+.. note::
+   This step only needs to be performed once!
+.. note::
+   Please verify that no errors were output when you run this command.
 
 Creating Venafi Cloud issuer
 ----------------------------
