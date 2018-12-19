@@ -61,12 +61,22 @@ var CertificateExpiryTimeSeconds = prometheus.NewGaugeVec(
 	[]string{"name", "namespace"},
 )
 
+var CertificateIssuedLatency = prometheus.NewHistogram(
+	prometheus.HistogramOpts{
+		Namespace: namespace,
+		Name:      "certificate_issued_latency_seconds",
+		Buckets:   []float64{30, 60, 120, 180, 240, 300},
+		Help:      "The amount of time for a namespace secret to be issued after a certificate has been created.",
+	},
+)
+
 type Metrics struct {
 	http.Server
 
 	// TODO (@dippynark): switch this to use an interface to make it testable
 	registry                     *prometheus.Registry
 	CertificateExpiryTimeSeconds *prometheus.GaugeVec
+	CertificateIssuedLatency     *prometheus.Histogram
 }
 
 func New() *Metrics {
@@ -84,6 +94,7 @@ func New() *Metrics {
 		},
 		registry:                     prometheus.NewRegistry(),
 		CertificateExpiryTimeSeconds: CertificateExpiryTimeSeconds,
+		CertificateIssuedLatency:     &CertificateIssuedLatency,
 	}
 
 	router.Handle("/metrics", promhttp.HandlerFor(s.registry, promhttp.HandlerOpts{}))
@@ -109,6 +120,7 @@ func (m *Metrics) waitShutdown(stopCh <-chan struct{}) {
 func (m *Metrics) Start(stopCh <-chan struct{}) {
 
 	m.registry.MustRegister(m.CertificateExpiryTimeSeconds)
+	m.registry.MustRegister(*m.CertificateIssuedLatency)
 
 	go func() {
 
@@ -146,4 +158,10 @@ func updateX509Expiry(name, namespace string, cert *x509.Certificate) {
 	CertificateExpiryTimeSeconds.With(prometheus.Labels{
 		"name":      name,
 		"namespace": namespace}).Set(float64(expiryTime.Unix()))
+}
+
+// UpdateCertificateIssuedLatency updates the amount of time for a namespace secret to be issued after a certificate has been created.
+func (m *Metrics) UpdateCertificateIssuedLatency(latency time.Duration) {
+	latencyInSeconds := float64(latency) / 1000000000
+	CertificateIssuedLatency.Observe(latencyInSeconds)
 }
